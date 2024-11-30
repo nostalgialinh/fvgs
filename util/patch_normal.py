@@ -1,6 +1,8 @@
 import os
 import shutil
 import numpy as np
+import torch
+from PIL import Image as pil_image
 
 class Point3D:
     #   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[] as (IMAGE_ID, POINT2D_IDX)
@@ -97,6 +99,18 @@ def set_used_keypoints(images, points3D):
     for point3D in points3D:
         for track in point3D.track:
             images[track[0]-1].used_keypoints_idx.append((track[1], point3D.id, point3D.xyz))
+
+def mde_depth_map(train_images_path, images: Image):
+    repo = "isl-org/ZoeDepth"
+    model_zoe_n = torch.hub.load(repo, "ZoeD_N", pretrained=True)
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    zoe = model_zoe_n.to(DEVICE)
+
+    with open(train_images_path, 'r') as f:
+        for image in images:
+            path = os.path.join(train_images_path, image.name)
+            img = pil_image.open(path).convert('RGB')
+            depth_numpy = zoe.infer_pil(img)       
 
 if __name__ == '__main__':
     point3d_txt_path = 'D:\\PythonCode\\main_project\\fern_san\\3_views\\triangulated\\points3D.txt'
