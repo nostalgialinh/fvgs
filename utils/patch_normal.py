@@ -47,6 +47,7 @@ class Image:
         self.depth_map_pcd: np.array = None
         self.camera_intrinsics = None
         self.depth_map_mde = None
+        self.key_idx=None
 
     def create_depth_map_pcd(self):
         x: int = None
@@ -63,6 +64,7 @@ class Image:
             idx = elem[0]
             x = int(self.points2d[idx][0])
             y = int(self.points2d[idx][1])
+            self.key_idx.append((x,y))
             point_3d_xyz = np.vstack(elem[2]) # np array xyz
             cam_coord = np.matmul(K, np.matmul(R.transpose(), point_3d_xyz) + T.reshape(3,1))
             depth = cam_coord[2]
@@ -172,13 +174,44 @@ def mde_depth_map(train_images_path, images: Image):
             img = pil_image.open(path).convert('RGB')
             depth_numpy = zoe.infer_pil(img)
             print(np.shape(depth_numpy))
-            image.depth_map_mde = depth_numpy
-    
-    
+            image.depth_map_mde = resize_depth_map(depth_numpy,image.img_size,(4032, 3024))
+
+def resize_depth_map(depth_map_mde, old_size, new_size):
+    scale_factor = new_size[0] // old_size[0] 
+    assert new_size[0] % old_size[0] == 0 and new_size[1] % old_size[1] == 0, \
+        "New size must be an exact multiple of the old size."
+
+    depth_map_resized = np.repeat(np.repeat(depth_map_mde, scale_factor, axis=0), scale_factor, axis=1)
+    print(depth_map_mde)
+    print(depth_map_resized)
+    return depth_map_resized
+
+def patchify(images):
+    batch = {}
+    for image in images:
+        patch_size = image.img_patch_size 
+        depth_pcd = image.depth_map_pcd
+        depth_mde = image.depth_map_mde
+        for x,y in image.key_idx:
+            wid = x // patch_size
+            hei = y // patch_size
+            if(wid not in batch):
+                batch[wid] = {}
+            if(hei not in batch[wid]):
+                batch[wid][hei]=[]
+            
+            batch[wid][hei].append({
+                        "x": x,
+                        "y": y,
+                        "depth_pcd": depth_pcd[y][x],
+                        "depth_mde": depth_mde[y][x]
+            })
+    return batch
+
 if __name__ == '__main__':
-    point3d_txt_path = 'fern\\3_views\\triangulated\\points3D.txt'
-    img_txt_path = 'fern\\3_views\\triangulated\\images.txt'
-    camera_txt_path = 'fern\\3_views\\triangulated\\cameras.txt'
+    camera_txt_path = 'fern/3_views/triangulated/cameras.txt'
+    point3d_txt_path = 'fern/3_views/triangulated/points3D.txt'
+    img_txt_path = 'fern/3_views/triangulated/images.txt'
     points_3d = read_point3d(point3d_txt_path)
     images = read_images(img_txt_path)
     set_used_keypoints(images, points_3d)
@@ -186,7 +219,9 @@ if __name__ == '__main__':
     
     for image in images:
         image.camera_intrinsics = camera_intrinsics[image.camera_id]
+    patchify(images)   
 
     for image  in images:
         image.create_depth_map_pcd()
+        mde_depth_map()
         print(f"Created depth map from point cloud for image {image.id}")
