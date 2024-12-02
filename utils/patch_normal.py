@@ -65,9 +65,7 @@ class Image:
             y = int(self.points2d[idx][1])
             point_3d_xyz = np.vstack(elem[2]) # np array xyz
             cam_coord = np.matmul(K, np.matmul(R.transpose(), point_3d_xyz) + T.reshape(3,1))
-            # print(np.shape(point_3d_xyz))
             depth = cam_coord[2]
-            # print(np.shape(depth))
             if self.depth_map_pcd[y, x] > depth[0]:
                 self.depth_map_pcd[y, x] = depth[0]
         
@@ -114,9 +112,6 @@ def read_point3d(path):
             point3d = Point3D()
             point3d.id = (int(tokens[0]))
             point3d.xyz = np.array(tuple(map(float, tokens[1:4])))
-            # if count == 1:
-            #     print('HEHE')
-            #     print(np.shape(point3d.xyz)) 
             if point3d.xyz[2] < 0:
                 print("Exists z smaller than 0")
             point3d.rgb = np.array([float(tokens[4]), float(tokens[5]), float(tokens[6])])
@@ -178,15 +173,12 @@ def mde_depth_map(train_images_path, images: Image):
             depth_numpy = zoe.infer_pil(img)
             print(np.shape(depth_numpy))
             image.depth_map_mde = depth_numpy
-        
     
     
-    
-
 if __name__ == '__main__':
-    point3d_txt_path = 'D:\\PythonCode\\main_project\\fern_san\\3_views\\triangulated\\points3D.txt'
-    img_txt_path = 'D:\\PythonCode\\main_project\\fern_san\\3_views\\triangulated\\images.txt'
-    camera_txt_path = 'D:\\PythonCode\\main_project\\fern_san\\3_views\\triangulated\\cameras.txt'
+    point3d_txt_path = 'fern\\3_views\\triangulated\\points3D.txt'
+    img_txt_path = 'fern\\3_views\\triangulated\\images.txt'
+    camera_txt_path = 'fern\\3_views\\triangulated\\cameras.txt'
     points_3d = read_point3d(point3d_txt_path)
     images = read_images(img_txt_path)
     set_used_keypoints(images, points_3d)
@@ -197,4 +189,4 @@ if __name__ == '__main__':
 
     for image  in images:
         image.create_depth_map_pcd()
-        print("hehe")
+        print(f"Created depth map from point cloud for image {image.id}")
