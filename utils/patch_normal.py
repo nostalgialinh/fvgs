@@ -46,6 +46,7 @@ class Image:
         self.used_keypoints_idx: list[(int,int, np.array[float,float,float])] = [] # (point2d_idx, point3d_id, xyz in 3d)
         self.depth_map_pcd: np.array = None
         self.camera_intrinsics = None
+        self.depth_map_mde = None
 
     def create_depth_map_pcd(self):
         x: int = None
@@ -67,9 +68,9 @@ class Image:
             # print(np.shape(point_3d_xyz))
             depth = cam_coord[2]
             # print(np.shape(depth))
-            if self.depth_map_pcd[y,x] > depth:
-                self.depth_map_pcd[y,x] = depth
-
+            if self.depth_map_pcd[y, x] > depth[0]:
+                self.depth_map_pcd[y, x] = depth[0]
+        
 
 
 Camera = collections.namedtuple(
@@ -174,7 +175,13 @@ def mde_depth_map(train_images_path, images: Image):
         for image in images:
             path = os.path.join(train_images_path, image.name)
             img = pil_image.open(path).convert('RGB')
-            depth_numpy = zoe.infer_pil(img)       
+            depth_numpy = zoe.infer_pil(img)
+            print(np.shape(depth_numpy))
+            image.depth_map_mde = depth_numpy
+        
+    
+    
+    
 
 if __name__ == '__main__':
     point3d_txt_path = 'D:\\PythonCode\\main_project\\fern_san\\3_views\\triangulated\\points3D.txt'
